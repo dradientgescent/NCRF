@@ -74,6 +74,26 @@ def get_probs_map(model, dataloader):
 
     return probs_map
 
+def get_embeddings(model, DataLoader):
+
+    count = 0
+    time_now = time.time()
+    for (data, x_mask, y_mask) in dataloader:
+        data = Variable(data.cuda(async=True), volatile=True)
+        output = model(data)
+
+        embedding = output.cpu().data.numpy()
+
+
+        time_spent = time.time() - time_now
+        time_now = time.time()
+        logging.info(
+            '{}, flip : {}, rotate : {}, batch : {}/{}, Run Time : {:.2f}'
+            .format(
+                time.strftime("%Y-%m-%d %H:%M:%S"), dataloader.dataset._flip,
+                dataloader.dataset._rotate, count, num_batch, time_spent))
+
+    return embedding
 
 def make_dataloader(args, cfg, flip='NONE', rotate='NONE'):
     batch_size = cfg['batch_size'] * 2
@@ -106,14 +126,19 @@ def run(args):
 
     mask = np.load(args.mask_path)
     ckpt = torch.load(args.ckpt_path)
-    model = MODELS[cfg['model']](num_nodes=grid_size, use_crf=cfg['use_crf'])
+    model = MODELS[cfg['model']](num_nodes=grid_size, use_crf=cfg['use_crf'], embeddings = cfg['embeddings'])
     model.load_state_dict(ckpt['state_dict'])
     model = model.cuda().eval()
 
     if not args.eight_avg:
         dataloader = make_dataloader(
             args, cfg, flip='NONE', rotate='NONE')
-        probs_map = get_probs_map(model, dataloader)
+        #probs_map = get_probs_map(model, dataloader)
+
+        embeddings = get_embeddings(model, dataloader)
+
+        np.savetxt(args.probs_map_path, embeddings, delimiter = ",")
+        
     else:
         probs_map = np.zeros(mask.shape)
 
@@ -151,7 +176,7 @@ def run(args):
 
         probs_map /= 8
 
-    np.save(args.probs_map_path, probs_map)
+    #np.save(args.probs_map_path, probs_map)
 
 
 def main():

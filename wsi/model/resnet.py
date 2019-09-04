@@ -89,7 +89,7 @@ class Bottleneck(nn.Module):
 class ResNet(nn.Module):
 
     def __init__(self, block, layers, num_classes=1, num_nodes=1,
-                 use_crf=True):
+                 use_crf=True, embeddings):
         """Constructs a ResNet model.
 
         Args:
@@ -113,6 +113,7 @@ class ResNet(nn.Module):
         self.avgpool = nn.AvgPool2d(7, stride=1)
         self.fc = nn.Linear(512 * block.expansion, num_classes)
         self.crf = CRF(num_nodes) if use_crf else None
+        self.embeddings = embeddings
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -172,14 +173,19 @@ class ResNet(nn.Module):
 
         # restore grid_size dimension for CRF
         feats = feats.view((batch_size, grid_size, -1))
-        logits = logits.view((batch_size, grid_size, -1))
 
-        if self.crf:
-            logits = self.crf(feats, logits)
+        if self.embeddings == True:
+            return feats
 
-        logits = torch.squeeze(logits)
+        else:
+            logits = logits.view((batch_size, grid_size, -1))
 
-        return logits
+            if self.crf:
+                logits = self.crf(feats, logits)
+
+            logits = torch.squeeze(logits)
+
+            return logits
 
 
 def resnet18(**kwargs):

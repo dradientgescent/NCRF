@@ -89,7 +89,7 @@ class Bottleneck(nn.Module):
 class ResNet(nn.Module):
 
     def __init__(self, block, layers, num_classes=1, num_nodes=1,
-                 use_crf=True, embeddings):
+                 use_crf=True, embeddings=True):
         """Constructs a ResNet model.
 
         Args:

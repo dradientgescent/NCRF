@@ -2,6 +2,7 @@ import sys
 import os
 import argparse
 import logging
+from glob import glob
 
 import numpy as np
 import openslide
@@ -25,31 +26,34 @@ parser.add_argument('--RGB_min', default=50, type=int, help='min value for RGB'
 def run(args):
     logging.basicConfig(level=logging.INFO)
 
-    slide = openslide.OpenSlide(args.wsi_path)
+    for file in glob(args.wsi_path+'/*.tiff')
 
-    # note the shape of img_RGB is the transpose of slide.level_dimensions
-    img_RGB = np.transpose(np.array(slide.read_region((0, 0),
-                           args.level,
-                           slide.level_dimensions[args.level]).convert('RGB')),
-                           axes=[1, 0, 2])
+        slide = openslide.OpenSlide(file)
 
-    img_HSV = rgb2hsv(img_RGB)
+        # note the shape of img_RGB is the transpose of slide.level_dimensions
+        img_RGB = np.transpose(np.array(slide.read_region((0, 0),
+                               args.level,
+                               slide.level_dimensions[args.level]).convert('RGB')),
+                               axes=[1, 0, 2])
 
-    background_R = img_RGB[:, :, 0] > threshold_otsu(img_RGB[:, :, 0])
-    background_G = img_RGB[:, :, 1] > threshold_otsu(img_RGB[:, :, 1])
-    background_B = img_RGB[:, :, 2] > threshold_otsu(img_RGB[:, :, 2])
-    tissue_RGB = np.logical_not(background_R & background_G & background_B)
-    tissue_S = img_HSV[:, :, 1] > threshold_otsu(img_HSV[:, :, 1])
-    min_R = img_RGB[:, :, 0] > args.RGB_min
-    min_G = img_RGB[:, :, 1] > args.RGB_min
-    min_B = img_RGB[:, :, 2] > args.RGB_min
+        img_HSV = rgb2hsv(img_RGB)
 
-    tissue_mask = tissue_S & tissue_RGB & min_R & min_G & min_B
+        background_R = img_RGB[:, :, 0] > threshold_otsu(img_RGB[:, :, 0])
+        background_G = img_RGB[:, :, 1] > threshold_otsu(img_RGB[:, :, 1])
+        background_B = img_RGB[:, :, 2] > threshold_otsu(img_RGB[:, :, 2])
+        tissue_RGB = np.logical_not(background_R & background_G & background_B)
+        tissue_S = img_HSV[:, :, 1] > threshold_otsu(img_HSV[:, :, 1])
+        min_R = img_RGB[:, :, 0] > args.RGB_min
+        min_G = img_RGB[:, :, 1] > args.RGB_min
+        min_B = img_RGB[:, :, 2] > args.RGB_min
 
-    np.save(args.npy_path, tissue_mask)
+        tissue_mask = tissue_S & tissue_RGB & min_R & min_G & min_B
+
+        np.save(args.npy_path + os.path.basename(file) + '.npy', tissue_mask)
 
 
 def main():
+
     args = parser.parse_args()
     run(args)
 
